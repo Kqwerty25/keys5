@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>Дневник путешествий</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f4f4;
+        }
+
+        input, textarea, select {
+            display: block;
+            margin: 10px 0;
+            padding: 5px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .entry {
+            border: 1px solid #ccc;
+            background: #fff;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .own {
+            background: #e0ffe0;
+        }
+
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Дневник путешествий</h1>
+
+    <div id="authSection">
+        <label>Введите имя пользователя:</label>
+        <input id="usernameInput" type="text" />
+        <button onclick="login()">Войти</button>
+    </div>
+
+    <div id="mainApp" class="hidden">
+        <h2>Привет, <span id="currentUserSpan"></span>!</h2>
+
+        <h3>Добавить путешествие</h3>
+        <form onsubmit="addTrip(event)">
+            <input type="text" id="tripTitle" placeholder="Название поездки" required />
+            <input type="number" id="tripCost" placeholder="Стоимость поездки (₽)" required />
+            <textarea id="culturalSites" placeholder="Места культурного наследия (через запятую)" required></textarea>
+            <textarea id="placesToVisit" placeholder="Места для посещения (через запятую)" required></textarea>
+            <select id="tripVisibility">
+                <option value="public">Публичная</option>
+                <option value="private">Только для меня</option>
+            </select>
+            <button type="submit">Сохранить</button>
+        </form>
+
+        <h3>Мои путешествия</h3>
+        <div id="myTrips"></div>
+
+        <h3>Путешествия других пользователей</h3>
+        <div id="otherTrips"></div>
+    </div>
+
+    <script>
+    // Локальное хранилище
+    let trips = JSON.parse(localStorage.getItem("trips")) || [];
+    let currentUser = null;
+
+    function login() {
+      const username = document.getElementById("usernameInput").value.trim();
+      if (!username) return alert("Введите имя пользователя.");
+      currentUser = username;
+      document.getElementById("authSection").classList.add("hidden");
+      document.getElementById("mainApp").classList.remove("hidden");
+      document.getElementById("currentUserSpan").textContent = username;
+      renderTrips();
+    }
+
+    function addTrip(event) {
+      event.preventDefault();
+
+      const title = document.getElementById("tripTitle").value.trim();
+      const cost = parseFloat(document.getElementById("tripCost").value);
+      const cultural = document.getElementById("culturalSites").value.trim();
+      const places = document.getElementById("placesToVisit").value.trim();
+      const visibility = document.getElementById("tripVisibility").value;
+
+      if (!title || isNaN(cost) || !cultural || !places) {
+        return alert("Пожалуйста, заполните все поля.");
+      }
+
+      const trip = {
+        id: Date.now(),
+        user: currentUser,
+        title,
+        cost,
+        culturalSites: cultural.split(",").map(s => s.trim()),
+        placesToVisit: places.split(",").map(s => s.trim()),
+        visibility,
+        createdAt: new Date().toISOString()
+      };
+
+      trips.push(trip);
+      localStorage.setItem("trips", JSON.stringify(trips));
+      document.querySelector("form").reset();
+      renderTrips();
+    }
+
+    function renderTrips() {
+      const myTripsDiv = document.getElementById("myTrips");
+      const otherTripsDiv = document.getElementById("otherTrips");
+
+      myTripsDiv.innerHTML = "";
+      otherTripsDiv.innerHTML = "";
+
+      const myTrips = trips.filter(trip => trip.user === currentUser);
+      const publicTrips = trips.filter(trip => trip.user !== currentUser && trip.visibility === "public");
+
+      for (let trip of myTrips) {
+        const div = createTripElement(trip, true);
+        myTripsDiv.appendChild(div);
+      }
+
+      for (let trip of publicTrips) {
+        const div = createTripElement(trip, false);
+        otherTripsDiv.appendChild(div);
+      }
+    }
+
+    function createTripElement(trip, isOwn) {
+      const div = document.createElement("div");
+      div.className = "entry" + (isOwn ? " own" : "");
+      div.innerHTML = `
+        <strong>${trip.title}</strong><br/>
+        Автор: ${trip.user}<br/>
+        Стоимость: ${trip.cost} ₽<br/>
+        <b>Культурные достопримечательности:</b> ${trip.culturalSites.join(", ")}<br/>
+        <b>Места для посещения:</b> ${trip.placesToVisit.join(", ")}<br/>
+        <i>Дата публикации:</i> ${new Date(trip.createdAt).toLocaleString()}
+      `;
+      return div;
+    }
+    </script>
+
+</body>
+</html>
